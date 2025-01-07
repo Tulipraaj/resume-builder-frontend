@@ -1,0 +1,55 @@
+/* Styling for ChooseTemplatePage */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f9;
+}
+
+.choose-template-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    text-align: center;
+    padding: 2rem;
+    background-color: #f4f4f9;
+    border-radius: 10px;
+    max-width: 600px;
+    margin: auto;
+}
+
+.choose-template-container h1 {
+    font-size: 2.5rem;
+    color: #333;
+    margin-bottom: 1rem;
+}
+
+.choose-template-container p {
+    font-size: 1.2rem;
+    color: #555;
+    margin-bottom: 2rem;
+}
+
+.choose-template-container button {
+    font-size: 1rem;
+    padding: 0.8rem 1.5rem;
+    color: #fff;
+    background-color: #007bff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.3s, transform 0.2s;
+}
+
+.choose-template-container button:hover {
+    background-color: #0056b3;
+    transform: scale(1.05);
+}
+
+.choose-template-container button:active {
+    background-color: #004085;
+    transform: scale(0.98);
+}
