@@ -8,74 +8,107 @@ function Login() {
         email: '',
         password: '',
     });
-
+    const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState("");
     const navigate = useNavigate();
 
     useEffect(() => {
-        // Load Google's OAuth script
-        const script = document.createElement('script');
-        script.src = "https://accounts.google.com/gsi/client";
-        script.async = true;
-        script.defer = true;
-        document.body.appendChild(script);
+        const initializeGoogleAuth = () => {
+            const script = document.createElement('script');
+            script.src = "https://accounts.google.com/gsi/client";
+            script.async = true;
+            script.defer = true;
+            
+            script.onload = () => {
+                try {
+                    window.google.accounts.id.initialize({
+                        client_id: '1082362001839-nt2rhkjd4adjsjbjnmf7n18spib12fj4.apps.googleusercontent.com',
+                        callback: handleGoogleCallback,
+                        ux_mode: 'popup',
+                        auto_select: false,
+                        context: 'signin'
+                    });
 
-        script.onload = () => {
-            window.google.accounts.id.initialize({
-                client_id: '1082362001839-nt2rhkjd4adjsjbjnmf7n18spib12fj4.apps.googleusercontent.com', // Replace with your Google Client ID
-                callback: handleGoogleCallback
-            });
+                    window.google.accounts.id.renderButton(
+                        document.getElementById("googleSignInDiv"),
+                        { 
+                            theme: "outline", 
+                            size: "large", 
+                            width: "100%",
+                            text: "signin_with",
+                            shape: "rectangular"
+                        }
+                    );
+                } catch (error) {
+                    console.error('Error initializing Google Sign-In:', error);
+                    setError("Failed to initialize Google Sign-In. Please try again later.");
+                }
+            };
 
-            window.google.accounts.id.renderButton(
-                document.getElementById("googleSignInDiv"),
-                { theme: "outline", size: "large", width: "100%" }
-            );
+            script.onerror = () => {
+                setError("Failed to load Google Sign-In. Please check your internet connection.");
+            };
+
+            document.body.appendChild(script);
+            return () => {
+                const scriptElement = document.querySelector(`script[src="${script.src}"]`);
+                if (scriptElement) document.body.removeChild(scriptElement);
+            };
         };
 
-        return () => {
-            // Cleanup
-            document.body.removeChild(script);
-        };
+        initializeGoogleAuth();
     }, []);
 
     const handleGoogleCallback = async (response) => {
+        setIsLoading(true);
+        setError("");
+        
         try {
-            // Send the ID token to your backend
             const result = await axios.post("https://resume-builder-backend-eta.vercel.app/api/users/google-login", {
                 token: response.credential
             });
 
-            alert(result.data.message);
-            localStorage.setItem("token", result.data.token);
-            navigate("/dashboard");
+            if (result.data.token) {
+                localStorage.setItem("token", result.data.token);
+                navigate("/dashboard");
+            } else {
+                throw new Error("No token received from server");
+            }
         } catch (error) {
-            console.error(error);
-            setError("Error logging in with Google. Please try again.");
+            console.error('Google login error:', error);
+            setError(error.response?.data?.message || "Error logging in with Google. Please try again.");
+        } finally {
+            setIsLoading(false);
         }
     };
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
+        setError(""); // Clear error when user starts typing
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
+        setIsLoading(true);
         setError("");
+
         try {
             const result = await axios.post("https://resume-builder-backend-eta.vercel.app/api/users/login", {
                 email: formData.email,
                 password: formData.password,
             });
 
-            alert(result.data.message);
-            localStorage.setItem("token", result.data.token);
-            if (result) {
+            if (result.data.token) {
+                localStorage.setItem("token", result.data.token);
                 navigate("/dashboard");
+            } else {
+                throw new Error("No token received from server");
             }
         } catch (error) {
-            console.error(error);
-            setError("Error logging in. Please try again.");
+            console.error('Login error:', error);
+            setError(error.response?.data?.message || "Invalid email or password. Please try again.");
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -92,6 +125,7 @@ function Login() {
                         placeholder="Enter your email"
                         value={formData.email}
                         onChange={handleChange}
+                        disabled={isLoading}
                         required
                     />
                 </div>
@@ -105,13 +139,20 @@ function Login() {
                         placeholder="Enter your password"
                         value={formData.password}
                         onChange={handleChange}
+                        disabled={isLoading}
                         required
                     />
                 </div>
 
                 {error && <p className="error-message">{error}</p>}
 
-                <button type="submit" className="signup-button">Login</button>
+                <button 
+                    type="submit" 
+                    className="signup-button"
+                    disabled={isLoading}
+                >
+                    {isLoading ? 'Logging in...' : 'Login'}
+                </button>
                 
                 <div className="oauth-separator">
                     <span>OR</span>
