@@ -14,15 +14,81 @@ function Dashboard(){
     experience: [{ jobTitle: "", companyName: "", startDate: "", endDate: "", description: "" },],
     projects: [{ projName: "", projDescription: "" }],
     achievements: [""],
-  })
+  });
 
-  const [message, setMessage] = useState("")
-  const [error, setError] = useState("")
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [userName, setUserName] = useState("User");
+  const [userEmail, setUserEmail] = useState("");
+  const [authProvider, setAuthProvider] = useState("local");
 
   const token = localStorage.getItem("token");
-  const decodedToken = jwtDecode(token)
+  const decodedToken = jwtDecode(token);
   const userId = decodedToken.id;
 
+  useEffect(() => {
+    const fetchUserDetails = async () => {
+      try {
+        // Fetch user details first
+        const userResponse = await axios.get(`https://resume-builder-backend-eta.vercel.app/api/users/user/${userId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const userData = userResponse.data;
+        setUserName(userData.name);
+        setUserEmail(userData.email);
+        setAuthProvider(userData.authProvider || 'local');
+
+        // Pre-fill personal details if this is an OAuth user and no resume exists yet
+        if (userData.authProvider === 'google') {
+          setResumeData(prevData => ({
+            ...prevData,
+            personalDetails: {
+              ...prevData.personalDetails,
+              fullName: userData.name || prevData.personalDetails.fullName,
+              email: userData.email || prevData.personalDetails.email,
+            }
+          }));
+        }
+
+        // Fetch resume details
+        const resumeDetails = await axios.get(
+          `https://resume-builder-backend-eta.vercel.app/api/resumes/${userId}`,
+          {
+            headers: { Authorization: `Bearer ${token}`}
+          }
+        );
+
+        if (resumeDetails.data) {
+          const resume = resumeDetails.data;
+          
+          // Normalize dates in the "experience" array
+          const normalizedExperience = resume.experience.map((exp) => ({
+            ...exp,
+            startDate: exp.startDate ? exp.startDate.split('T')[0] : "",
+            endDate: exp.endDate ? exp.endDate.split('T')[0] : "",
+          }));
+      
+          setResumeData({
+            ...resume,
+            experience: normalizedExperience,
+          });
+        }
+
+      } catch (error) {
+        console.error("Error fetching user details:", error);
+        if (error.response?.status === 404) {
+          console.log("No existing resume found");
+        } else {
+          setError("Error loading user data. Please try again later.");
+        }
+      }
+    };
+
+    fetchUserDetails();
+  }, [userId, token]);
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -38,7 +104,8 @@ function Dashboard(){
   const handleObjective = (e) => {
     const { name, value } = e.target
     setResumeData((prevData) => ({
-      ...prevData,[name] : value,
+      ...prevData,
+      [name] : value,
     }))
   }
 
@@ -70,21 +137,17 @@ function Dashboard(){
     setResumeData({ ...resumeData, [arrayName]: updatedArray });
   };
   
-  
-  
   const handleRemove = (arrayName, index) => {
-    const updatedArray = resumeData[arrayName].filter((_, i) => i !== index); // Remove specific achievement
+    const updatedArray = resumeData[arrayName].filter((_, i) => i !== index);
     setResumeData({ ...resumeData, [arrayName]: updatedArray });
   };
-  
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage('')
-    setError('')
+    setMessage('');
+    setError('');
 
-    try{
-
+    try {
       const payload = {...resumeData, userId}
 
       const response = await axios.post(
@@ -96,71 +159,27 @@ function Dashboard(){
           },
         }
       )
-      setMessage('Resume saved successfully')
-    }catch(err){
+      setMessage('Resume saved successfully');
+    } catch(err) {
       console.error(err);
       setError(err.response?.data?.message || "Failed to save resume details");
-
-      
     }
-  }
+  };
 
-  const [userName, setUserName] = useState("User");
-  useEffect(() => {
-    
-    // Fetch user details
-    const fetchUserDetails = async () => {
-      try {
-          const resumeDetails = await axios.get(
-                `https://resume-builder-backend-eta.vercel.app/api/resumes/${userId}`,
-                {
-                  headers: { Authorization: `Bearer ${token}`}
-                }
-              )
-              const resume = resumeDetails.data
-      
-              if (resume) {
-                // Normalize dates in the "experience" array
-                const normalizedExperience = resume.experience.map((exp) => ({
-                  ...exp,
-                  startDate: exp.startDate ? exp.startDate.split('T')[0] : "",
-                  endDate: exp.endDate ? exp.endDate.split('T')[0] : "",
-                }));
-          
-                setResumeData({
-                  ...resume,
-                  experience: normalizedExperience,
-                });
-              }
-
-              
-          const response = await axios.get(`https://resume-builder-backend-eta.vercel.app/api/users/user/${userId}`, {
-              headers: {
-                  Authorization: `Bearer ${token}`,
-              },
-          });
-
-
-          setUserName(response.data.name);
-        } catch (error) {
-            console.error("Error fetching user details:", error);
-        }
-    };
-
-    fetchUserDetails();
-  }, [userId, token]);
-
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   const handleChooseTemplate = () => {
     Cookies.set("resumeData", JSON.stringify(resumeData));
-    navigate("/choose-template")
+    navigate("/choose-template");
   }
 
   return(
     <div className='dashboard-container'>
       <h1>Dashboard</h1>
       <h2>Welcome, {userName}!</h2>
+      {authProvider === 'google' && (
+        <p className="oauth-notice">Signed in with Google</p>
+      )}
       <form onSubmit={handleSubmit} className="resume-form">
         <div className='form-group'>
           <label htmlFor="fullName">Full Name</label>
@@ -182,7 +201,7 @@ function Dashboard(){
             id='email'
             name='email'
             placeholder='Enter your Email Id'
-            value={resumeData.personalDetails.email || ""}
+            value={resumeData.personalDetails.email || userEmail}
             onChange={handleChange}
             required
           />
@@ -223,7 +242,6 @@ function Dashboard(){
             placeholder='Enter your LinkedIn Profile URL'
             value={resumeData.personalDetails.linkedin || ""}
             onChange={handleChange}
-          
           />
         </div>
 
@@ -236,7 +254,6 @@ function Dashboard(){
             placeholder='Enter your GitHub Profile URL'
             value={resumeData.personalDetails.github || ""}
             onChange={handleChange}
-        
           />
         </div>
 
@@ -252,7 +269,6 @@ function Dashboard(){
             required
           />
         </div>
-
 
         <div className='form-group'>
           <label htmlFor='education'>Education</label>
@@ -299,9 +315,7 @@ function Dashboard(){
                   Remove
                 </button>
               </div>
-                
             </div>
-
           ))}
           <button className="add-button" type='button' onClick={() => handleAdd("education", {degree: "", institution: "", yearOfGraduation:""})}>
             Add Education
@@ -316,7 +330,7 @@ function Dashboard(){
                 type="text"
                 value={skill}
                 onChange={(e) => handleArrayChange(e, "skills", index)}
-                placeholder="Achievement"
+                placeholder="Skill"
                 required
               />
               <button className="remove-button" type="button" onClick={() => handleRemove("skills", index)}>
@@ -329,95 +343,92 @@ function Dashboard(){
           </button>
         </div>
 
-
         <div className="form-group">
-            <label htmlFor="experience">Experience</label>
-            {resumeData.experience.map((exp, index) => (
-                <div key={index} className="array-field">
+          <label htmlFor="experience">Experience</label>
+          {resumeData.experience.map((exp, index) => (
+            <div key={index} className="array-field">
+              <label htmlFor="Jobtitle">Job Title</label> 
+              <input
+                type="text"
+                value={exp.jobTitle}
+                onChange={(e) => handleArrayChange(e, "experience", index, "jobTitle")}
+                placeholder="Job Title"
+                required
+              />
 
-                    <label htmlFor="Jobtitle">Job Title</label> 
-                    <input
-                        type="text"
-                        value={exp.jobTitle}
-                        onChange={(e) => handleArrayChange(e, "experience", index, "jobTitle")}
-                        placeholder="Job Title"
-                        required
-                    />
+              <label htmlFor="companyname">Company Name</label>
+              <input
+                type="text"
+                value={exp.companyName}
+                onChange={(e) => handleArrayChange(e, "experience", index, "companyName")}
+                placeholder="Company Name"
+                required
+              />
 
-                    <label htmlFor="companyname">Company Name</label>
-                    <input
-                        type="text"
-                        value={exp.companyName}
-                        onChange={(e) => handleArrayChange(e, "experience", index, "companyName")}
-                        placeholder="Company Name"
-                        required
-                    />
+              <label htmlFor="startdate">Start Date</label>
+              <input
+                type="date"
+                value={exp.startDate}
+                onChange={(e) => handleArrayChange(e, "experience", index, "startDate")}
+                required
+              />
 
-                    <label htmlFor="startdate">Start Date</label>
-                    <input
-                        type="date"
-                        value={exp.startDate}
-                        onChange={(e) => handleArrayChange(e, "experience", index, "startDate")}
-                        required
-                    />
+              <label htmlFor="enddate">End Date</label>
+              <input
+                type="date"
+                value={exp.endDate}
+                onChange={(e) => handleArrayChange(e, "experience", index, "endDate")}
+                required
+              />
 
-                    <label htmlFor="enddate">End Date</label>
-                    <input
-                        type="date"
-                        value={exp.endDate}
-                        onChange={(e) => handleArrayChange(e, "experience", index, "endDate")}
-                        required
-                    />
-
-                    <label htmlFor="description">Description</label>
-                    <textarea
-                        value={exp.description}
-                        onChange={(e) => handleArrayChange(e, "experience", index, "description")}
-                        placeholder="Description"
-                        required
-                    />
-                    <button className="remove-button" type="button" onClick={() => handleRemove("experience", index)}>
-                        Remove
-                    </button>
-                </div>
-            ))}
-            <button className="add-button" type="button" onClick={() => handleAdd("experience", { jobTitle: "", companyName: "", startDate: "", endDate: "", description: "" })}>
-                Add Experience
-            </button>
+              <label htmlFor="description">Description</label>
+              <textarea
+                value={exp.description}
+                onChange={(e) => handleArrayChange(e, "experience", index, "description")}
+                placeholder="Description"
+                required
+              />
+              <button className="remove-button" type="button" onClick={() => handleRemove("experience", index)}>
+                Remove
+              </button>
+            </div>
+          ))}
+          <button className="add-button" type="button" onClick={() => handleAdd("experience", { jobTitle: "", companyName: "", startDate: "", endDate: "", description: "" })}>
+            Add Experience
+          </button>
         </div>
 
         <div className="form-group">
           <label htmlFor="projects">Projects</label>
           {resumeData.projects.map((project, index) => (
-              <div key={index} className="array-field">
-                  <label htmlFor="projtitle">Project Title</label>
-                  <input
-                      type="text"
-                      value={project.projName}
-                      onChange={(e) => handleArrayChange(e, "projects", index, "projName")}
-                      placeholder="Project Title"
-                      required
-                  />
+            <div key={index} className="array-field">
+              <label htmlFor="projtitle">Project Title</label>
+              <input
+                type="text"
+                value={project.projName}
+                onChange={(e) => handleArrayChange(e, "projects", index, "projName")}
+                placeholder="Project Title"
+                required
+              />
 
-                  <label htmlFor="projdescription">Project Description</label>
-                  <textarea
-                      value={project.projDescription}
-                      onChange={(e) => handleArrayChange(e, "projects", index, "projDescription")}
-                      placeholder="Project Description"
-                      required
-                  />
-                  <button className="remove-button" type="button" onClick={() => handleRemove("projects", index)}>
-                      Remove
-                  </button>
-              </div>
+              <label htmlFor="projdescription">Project Description</label>
+              <textarea
+                value={project.projDescription}
+                onChange={(e) => handleArrayChange(e, "projects", index, "projDescription")}
+                placeholder="Project Description"
+                required
+              />
+              <button className="remove-button" type="button" onClick={() => handleRemove("projects", index)}>
+                Remove
+              </button>
+            </div>
           ))}
           <button className="add-button" type="button" onClick={() => handleAdd("projects", { projName: "", projDescription: "" })}>
-              Add Project
+            Add Project
           </button>
-      </div>
+        </div>
 
-                {/* Achievements */}
-      <div className="form-group">
+        <div className="form-group">
           <label htmlFor="achievements">Achievements</label>
           {resumeData.achievements.map((achievement, index) => (
             <div key={index} className="array-field">
@@ -436,23 +447,18 @@ function Dashboard(){
           <button className="add-button" type="button" onClick={() => handleAdd("achievements", "")}>
             Add Achievement
           </button>
-      </div>
-
+        </div>
 
         <div className="form-actions">
-            <button className="save-button" type="submit">Save Resume</button>
-            <button className="save-button" onClick={handleChooseTemplate} type="submit">Choose Template</button>
+          <button className="save-button" type="submit">Save Resume</button>
+          <button className="save-button" onClick={handleChooseTemplate} type="button">Choose Template</button>
         </div>
       </form>
 
-            {/* Messages */}
       {message && <div className="message success">{message}</div>}
       {error && <div className="message error">{error}</div>}
     </div>
-
-     
-
-  )
-};
+  );
+}
 
 export default Dashboard;

@@ -62,3 +62,23 @@ input:focus {
 .signup-button:hover {
     background-color: #0056b3;
 }
+
+.oauth-separator {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 20px 0;
+}
+
+.oauth-separator::before,
+.oauth-separator::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid #ccc;
+}
+
+.oauth-separator span {
+    padding: 0 10px;
+    color: #777;
+    font-size: 14px;
+}
