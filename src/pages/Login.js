@@ -3,6 +3,12 @@ import axios from 'axios';
 import "../styles/signup.css";
 import { useNavigate } from "react-router-dom";
 
+// Create an Axios instance with a default timeout
+const axiosInstance = axios.create({
+    baseURL: "https://resume-builder-backend-eta.vercel.app/api", // Base URL for your API
+    timeout: 10000, // 10 seconds timeout
+});
+
 function Login() {
     const [formData, setFormData] = useState({
         email: '',
@@ -26,7 +32,7 @@ function Login() {
                         callback: handleGoogleCallback,
                         ux_mode: 'popup',
                         auto_select: false,
-                        context: 'signin'
+                        context: 'signin',
                     });
 
                     window.google.accounts.id.renderButton(
@@ -36,7 +42,7 @@ function Login() {
                             size: "large", 
                             width: "100%",
                             text: "signin_with",
-                            shape: "rectangular"
+                            shape: "rectangular",
                         }
                     );
                 } catch (error) {
@@ -64,8 +70,8 @@ function Login() {
         setError("");
         
         try {
-            const result = await axios.post("https://resume-builder-backend-eta.vercel.app/api/users/google-login", {
-                token: response.credential
+            const result = await axiosInstance.post("/users/google-login", {
+                token: response.credential,
             });
 
             if (result.data.token) {
@@ -93,7 +99,7 @@ function Login() {
         setError("");
 
         try {
-            const result = await axios.post("https://resume-builder-backend-eta.vercel.app/api/users/login", {
+            const result = await axiosInstance.post("/users/login", {
                 email: formData.email,
                 password: formData.password,
             });
