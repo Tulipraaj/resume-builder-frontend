@@ -30,7 +30,7 @@ function Dashboard(){
     const fetchUserDetails = async () => {
       try {
         // Fetch user details first
-        const userResponse = await axios.get(`https://resume-builder-backend-eta.vercel.app/api/users/user/${userId}`, {
+        const userResponse = await axios.get(`https://resume-builder-backend-topaz.vercel.app/api/users/user/${userId}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -55,7 +55,7 @@ function Dashboard(){
 
         // Fetch resume details
         const resumeDetails = await axios.get(
-          `https://resume-builder-backend-eta.vercel.app/api/resumes/${userId}`,
+          `https://resume-builder-backend-topaz.vercel.app/api/resumes/${userId}`,
           {
             headers: { Authorization: `Bearer ${token}`}
           }
@@ -151,7 +151,7 @@ function Dashboard(){
       const payload = {...resumeData, userId}
 
       const response = await axios.post(
-        "https://resume-builder-backend-eta.vercel.app/api/resumes/create-or-update",
+        "https://resume-builder-backend-topaz.vercel.app/api/resumes/create-or-update",
         payload,
         {
           headers : {

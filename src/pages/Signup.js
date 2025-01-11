@@ -5,8 +5,8 @@ import { useNavigate } from 'react-router-dom';
 
 // Create an Axios instance with a default timeout
 const axiosInstance = axios.create({
-    baseURL: "https://resume-builder-backend-eta.vercel.app/api",
-    timeout: 10000, // 10 seconds timeout
+    baseURL: "https://resume-builder-backend-topaz.vercel.app/api",
+    timeout: 30000, // 10 seconds timeout
 });
 
 function Signup() {
