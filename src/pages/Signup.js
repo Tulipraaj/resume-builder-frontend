@@ -3,6 +3,12 @@ import axios from "axios";
 import "../styles/signup.css";
 import { useNavigate } from 'react-router-dom';
 
+// Create an Axios instance with a default timeout
+const axiosInstance = axios.create({
+    baseURL: "https://resume-builder-backend-eta.vercel.app/api",
+    timeout: 10000, // 10 seconds timeout
+});
+
 function Signup() {
     const [formData, setFormData] = useState({
         name: '',
@@ -10,10 +16,6 @@ function Signup() {
         password: '',
         confpass: ''
     });
-
-    const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value })
-    }
 
     const [error, setError] = useState("");
     const navigate = useNavigate();
@@ -27,20 +29,25 @@ function Signup() {
         document.body.appendChild(script);
 
         script.onload = () => {
-            window.google.accounts.id.initialize({
-                client_id: "1082362001839-nt2rhkjd4adjsjbjnmf7n18spib12fj4.apps.googleusercontent.com",
-                callback: handleGoogleCallback
-            });
+            try {
+                window.google.accounts.id.initialize({
+                    client_id: "1082362001839-nt2rhkjd4adjsjbjnmf7n18spib12fj4.apps.googleusercontent.com",
+                    callback: handleGoogleCallback,
+                });
 
-            window.google.accounts.id.renderButton(
-                document.getElementById("googleSignUpDiv"),
-                { 
-                    theme: "outline", 
-                    size: "large", 
-                    width: "100%",
-                    text: "signup_with" 
-                }
-            );
+                window.google.accounts.id.renderButton(
+                    document.getElementById("googleSignUpDiv"),
+                    { 
+                        theme: "outline", 
+                        size: "large", 
+                        width: "100%",
+                        text: "signup_with",
+                    }
+                );
+            } catch (error) {
+                console.error('Error initializing Google Sign-In:', error);
+                setError("Failed to initialize Google Sign-In. Please try again later.");
+            }
         };
 
         return () => {
@@ -53,18 +60,26 @@ function Signup() {
     }, []);
 
     const handleGoogleCallback = async (response) => {
+        setError(""); // Clear previous error
         try {
-            const result = await axios.post("https://resume-builder-backend-eta.vercel.app/api/users/google-login", {
-                token: response.credential
+            const result = await axiosInstance.post("/users/google-login", {
+                token: response.credential,
             });
 
             alert(result.data.message);
-            localStorage.setItem("token", result.data.token);
-            navigate('/dashboard');
+            if (result.data.token) {
+                localStorage.setItem("token", result.data.token);
+                navigate('/dashboard');
+            }
         } catch (error) {
-            console.error(error);
+            console.error('Google signup error:', error);
             setError("Error signing up with Google. Please try again.");
         }
+    };
+
+    const handleChange = (e) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+        setError(""); // Clear error when user starts typing
     };
 
     const handleSubmit = async (e) => {
@@ -75,9 +90,9 @@ function Signup() {
             return;
         }
 
-        setError("");
+        setError(""); // Clear previous error
         try {
-            const result = await axios.post("https://resume-builder-backend-eta.vercel.app/api/users/register", {
+            const result = await axiosInstance.post("/users/register", {
                 name: formData.name,
                 email: formData.email,
                 password: formData.password,
@@ -91,10 +106,10 @@ function Signup() {
                 navigate('/');
             }
         } catch (error) {
-            console.error(error);
-            setError(error.response?.data?.message || "Error registering user. Please try again");
+            console.error('Signup error:', error);
+            setError(error.response?.data?.message || "Error registering user. Please try again.");
         }
-    }
+    };
 
     return (
         <div className="signup-container">
@@ -163,7 +178,7 @@ function Signup() {
                 <div id="googleSignUpDiv"></div>
             </form>
         </div>
-    )
+    );
 };
 
 export default Signup;
